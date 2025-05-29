@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF Master - Viewer & Converter</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .app-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        .header h1 {
+            color: #4a5568;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            justify-content: center;
+        }
+
+        .tab {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            padding: 12px 24px;
+            border-radius: 25px;
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 600;
+        }
+
+        .tab.active {
+            background: rgba(255, 255, 255, 0.9);
+            color: #4a5568;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        .tab:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-1px);
+        }
+
+        .content-area {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            min-height: 600px;
+        }
+
+        .upload-zone {
+            border: 3px dashed #667eea;
+            border-radius: 15px;
+            padding: 40px;
+            text-align: center;
+            background: linear-gradient(45deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
+            margin-bottom: 20px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .upload-zone:hover {
+            border-color: #764ba2;
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.2);
+        }
+
+        .upload-zone.dragover {
+            background: linear-gradient(45deg, rgba(102, 126, 234, 0.2), rgba(118, 75, 162, 0.2));
+            border-color: #764ba2;
+        }
+
+        .upload-icon {
+            font-size: 48px;
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .btn {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            margin: 10px;
+            font-size: 14px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .pdf-viewer {
+            border: 2px solid #e2e8f0;
+            border-radius: 15px;
+            overflow: hidden;
+            background: #f7fafc;
+            margin-top: 20px;
+        }
+
+        .pdf-controls {
+            background: #4a5568;
+            color: white;
+            padding: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .pdf-canvas {
+            display: block;
+            margin: 0 auto;
+            max-width: 100%;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .page-info {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 8px 15px;
+            border-radius: 15px;
+            font-weight: 600;
+        }
+
+        .zoom-controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .zoom-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+
+        .zoom-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .converter-section {
+            display: none;
+        }
+
+        .converter-section.active {
+            display: block;
+        }
+
+        .conversion-options {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .conversion-card {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
+            border-radius: 15px;
+            padding: 25px;
+            text-align: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            border: 2px solid transparent;
+        }
+
+        .conversion-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(102, 126, 234, 0.2);
+            border-color: #667eea;
+        }
+
+        .conversion-icon {
+            font-size: 36px;
+            margin-bottom: 15px;
+            color: #667eea;
+        }
+
+        .text-editor {
+            width: 100%;
+            min-height: 300px;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            resize: vertical;
+            margin-top: 20px;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e2e8f0;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 15px 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .file-list {
+            margin-top: 20px;
+        }
+
+        .file-item {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .file-name {
+            font-weight: 600;
+            color: #4a5568;
+        }
+
+        .file-size {
+            color: #718096;
+            font-size: 12px;
+        }
+
+        @media (max-width: 768px) {
+            .app-container {
+                padding: 10px;
+            }
+            
+            .header h1 {
+                font-size: 2em;
+            }
+            
+            .tabs {
+                flex-wrap: wrap;
+            }
+            
+            .pdf-controls {
+                justify-content: center;
+            }
+            
+            .conversion-options {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <div class="header">
+            <h1>📄 PDF Master</h1>
+            <p>Advanced PDF Viewer & Converter</p>
+        </div>
+
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('viewer')">PDF Viewer</button>
+            <button class="tab" onclick="switchTab('converter')">Converter</button>
+        </div>
+
+        <div class="content-area">
+            <!-- PDF Viewer Section -->
+            <div id="viewer-section" class="viewer-section">
+                <div class="upload-zone" onclick="document.getElementById('pdf-input').click()">
+                    <div class="upload-icon">📎</div>
+                    <h3>Drop PDF file here or click to browse</h3>
+                    <p>Supports PDF files up to 50MB</p>
+                </div>
+                <input type="file" id="pdf-input" class="file-input" accept=".pdf" onchange="loadPDF(event)">
+                
+                <div id="pdf-viewer" class="pdf-viewer hidden">
+                    <div class="pdf-controls">
+                        <div>
+                            <button class="btn" onclick="previousPage()">← Previous</button>
+                            <button class="btn" onclick="nextPage()">Next →</button>
+                        </div>
+                        <div class="page-info">
+                            Page <span id="current-page">1</span> of <span id="total-pages">1</span>
+                        </div>
+                        <div class="zoom-controls">
+                            <button class="zoom-btn" onclick="zoomOut()">-</button>
+                            <span id="zoom-level">100%</span>
+                            <button class="zoom-btn" onclick="zoomIn()">+</button>
+                            <button class="btn" onclick="downloadPDF()">Download</button>
+                        </div>
+                    </div>
+                    <canvas id="pdf-canvas" class="pdf-canvas"></canvas>
+                </div>
+            </div>
+
+            <!-- Converter Section -->
+            <div id="converter-section" class="converter-section">
+                <div class="upload-zone" onclick="document.getElementById('convert-input').click()">
+                    <div class="upload-icon">🔄</div>
+                    <h3>Drop files here or click to browse</h3>
+                    <p>Supports PDF, TXT, HTML, Images (JPG, PNG)</p>
+                </div>
+                <input type="file" id="convert-input" class="file-input" accept=".pdf,.txt,.html,.jpg,.jpeg,.png" onchange="handleConvertFile(event)" multiple>
+                
+                <div class="conversion-options">
+                    <div class="conversion-card" onclick="convertToText()">
+                        <div class="conversion-icon">📝</div>
+                        <h3>PDF to Text</h3>
+                        <p>Extract text content from PDF</p>
+                    </div>
+                    <div class="conversion-card" onclick="convertToImages()">
+                        <div class="conversion-icon">🖼️</div>
+                        <h3>PDF to Images</h3>
+                        <p>Convert pages to PNG images</p>
+                    </div>
+                    <div class="conversion-card" onclick="showTextToPDF()">
+                        <div class="conversion-icon">📄</div>
+                        <h3>Text to PDF</h3>
+                        <p>Create PDF from text content</p>
+                    </div>
+                    <div class="conversion-card" onclick="showImageToPDF()">
+                        <div class="conversion-icon">🖼️➡️📄</div>
+                        <h3>Images to PDF</h3>
+                        <p>Combine images into PDF</p>
+                    </div>
+                </div>
+
+                <div id="text-to-pdf-editor" class="hidden">
+                    <h3>Text to PDF Converter</h3>
+                    <textarea id="text-content" class="text-editor" placeholder="Enter your text content here..."></textarea>
+                    <button class="btn" onclick="generatePDFFromText()">Generate PDF</button>
+                </div>
+
+                <div id="progress-container" class="hidden">
+                    <div class="progress-bar">
+                        <div id="progress-fill" class="progress-fill"></div>
+                    </div>
+                    <p id="progress-text">Processing...</p>
+                </div>
+
+                <div id="file-list" class="file-list hidden"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let currentPDF = null;
+        let currentPage = 1;
+        let totalPages = 0;
+        let scale = 1.0;
+        let convertFiles = [];
+        
+        // Initialize PDF.js worker
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+        // Tab switching
+        function switchTab(tabName) {
+            // Update tab buttons
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            // Show/hide sections
+            document.getElementById('viewer-section').style.display = tabName === 'viewer' ? 'block' : 'none';
+            document.getElementById('converter-section').style.display = tabName === 'converter' ? 'block' : 'none';
+        }
+
+        // PDF Viewer Functions
+        async function loadPDF(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            try {
+                const arrayBuffer = await file.arrayBuffer();
+                currentPDF = await pdfjsLib.getDocument({data: arrayBuffer}).promise;
+                totalPages = currentPDF.numPages;
+                currentPage = 1;
+                
+                document.getElementById('total-pages').textContent = totalPages;
+                document.getElementById('pdf-viewer').classList.remove('hidden');
+                
+                renderPage();
+            } catch (error) {
+                alert('Error loading PDF: ' + error.message);
+            }
+        }
+
+        async function renderPage() {
+            if (!currentPDF) return;
+
+            try {
+                const page = await currentPDF.getPage(currentPage);
+                const canvas = document.getElementById('pdf-canvas');
+                const ctx = canvas.getContext('2d');
+                
+                const viewport = page.getViewport({scale: scale});
+                canvas.height = viewport.height;
+                canvas.width = viewport.width;
+                
+                await page.render({
+                    canvasContext: ctx,
+                    viewport: viewport
+                }).promise;
+                
+                document.getElementById('current-page').textContent = currentPage;
+                document.getElementById('zoom-level').textContent = Math.round(scale * 100) + '%';
+            } catch (error) {
+                console.error('Error rendering page:', error);
+            }
+        }
+
+        function previousPage() {
+            if (currentPage > 1) {
+                currentPage--;
+                renderPage();
+            }
+        }
+
+        function nextPage() {
+            if (currentPage < totalPages) {
+                currentPage++;
+                renderPage();
+            }
+        }
+
+        function zoomIn() {
+            scale += 0.25;
+            renderPage();
+        }
+
+        function zoomOut() {
+            if (scale > 0.5) {
+                scale -= 0.25;
+                renderPage();
+            }
+        }
+
+        function downloadPDF() {
+            const input = document.getElementById('pdf-input');
+            if (input.files[0]) {
+                const url = URL.createObjectURL(input.files[0]);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = input.files[0].name;
+                a.click();
+                URL.revokeObjectURL(url);
+            }
+        }
+
+        // Converter Functions
+        function handleConvertFile(event) {
+            convertFiles = Array.from(event.target.files);
+            displayFileList();
+        }
+
+        function displayFileList() {
+            const fileList = document.getElementById('file-list');
+            fileList.innerHTML = '';
+            
+            if (convertFiles.length > 0) {
+                fileList.classList.remove('hidden');
+                convertFiles.forEach((file, index) => {
+                    const fileItem = document.createElement('div');
+                    fileItem.className = 'file-item';
+                    fileItem.innerHTML = `
+                        <div>
+                            <div class="file-name">${file.name}</div>
+                            <div class="file-size">${(file.size / 1024).toFixed(1)} KB</div>
+                        </div>
+                        <button class="btn" onclick="removeFile(${index})">Remove</button>
+                    `;
+                    fileList.appendChild(fileItem);
+                });
+            } else {
+                fileList.classList.add('hidden');
+            }
+        }
+
+        function removeFile(index) {
+            convertFiles.splice(index, 1);
+            displayFileList();
+        }
+
+        async function convertToText() {
+            if (convertFiles.length === 0 || !convertFiles[0].name.endsWith('.pdf')) {
+                alert('Please select a PDF file first');
+                return;
+            }
+
+            showProgress('Extracting text from PDF...');
+            
+            try {
+                const file = convertFiles[0];
+                const arrayBuffer = await file.arrayBuffer();
+                const pdf = await pdfjsLib.getDocument({data: arrayBuffer}).promise;
+                
+                let fullText = '';
+                for (let i = 1; i <= pdf.numPages; i++) {
+                    const page = await pdf.getPage(i);
+                    const textContent = await page.getTextContent();
+                    const pageText = textContent.items.map(item => item.str).join(' ');
+                    fullText += `--- Page ${i} ---\n${pageText}\n\n`;
+                    
+                    updateProgress((i / pdf.numPages) * 100);
+                }
+                
+                downloadTextFile(fullText, file.name.replace('.pdf', '.txt'));
+                hideProgress();
+            } catch (error) {
+                hideProgress();
+                alert('Error converting PDF to text: ' + error.message);
+            }
+        }
+
+        async function convertToImages() {
+            if (convertFiles.length === 0 || !convertFiles[0].name.endsWith('.pdf')) {
+                alert('Please select a PDF file first');
+                return;
+            }
+
+            showProgress('Converting PDF to images...');
+            
+            try {
+                const file = convertFiles[0];
+                const arrayBuffer = await file.arrayBuffer();
+                const pdf = await pdfjsLib.getDocument({data: arrayBuffer}).promise;
+                
+                for (let i = 1; i <= pdf.numPages; i++) {
+                    const page = await pdf.getPage(i);
+                    const viewport = page.getViewport({scale: 2.0});
+                    
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    canvas.height = viewport.height;
+                    canvas.width = viewport.width;
+                    
+                    await page.render({
+                        canvasContext: ctx,
+                        viewport: viewport
+                    }).promise;
+                    
+                    canvas.toBlob(blob => {
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = `${file.name.replace('.pdf', '')}_page_${i}.png`;
+                        a.click();
+                        URL.revokeObjectURL(url);
+                    }, 'image/png');
+                    
+                    updateProgress((i / pdf.numPages) * 100);
+                }
+                
+                hideProgress();
+            } catch (error) {
+                hideProgress();
+                alert('Error converting PDF to images: ' + error.message);
+            }
+        }
+
+        function showTextToPDF() {
+            document.getElementById('text-to-pdf-editor').classList.remove('hidden');
+        }
+
+        function generatePDFFromText() {
+            const text = document.getElementById('text-content').value;
+            if (!text.trim()) {
+                alert('Please enter some text content');
+                return;
+            }
+
+            showProgress('Generating PDF from text...');
+            
+            try {
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF();
+                
+                const lines = doc.splitTextToSize(text, 180);
+                let y = 20;
+                
+                lines.forEach(line => {
+                    if (y > 280) {
+                        doc.addPage();
+                        y = 20;
+                    }
+                    doc.text(line, 20, y);
+                    y += 7;
+                });
+                
+                doc.save('generated-document.pdf');
+                hideProgress();
+            } catch (error) {
+                hideProgress();
+                alert('Error generating PDF: ' + error.message);
+            }
+        }
+
+        async function showImageToPDF() {
+            const imageFiles = convertFiles.filter(file => 
+                file.type.startsWith('image/') || 
+                file.name.toLowerCase().match(/\.(jpg|jpeg|png|gif)$/)
+            );
+            
+            if (imageFiles.length === 0) {
+                alert('Please select image files first');
+                return;
+            }
+
+            showProgress('Converting images to PDF...');
+            
+            try {
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF();
+                
+                for (let i = 0; i < imageFiles.length; i++) {
+                    const file = imageFiles[i];
+                    const dataUrl = await fileToDataURL(file);
+                    
+                    if (i > 0) doc.addPage();
+                    
+                    const img = new Image();
+                    img.src = dataUrl;
+                    await new Promise(resolve => {
+                        img.onload = () => {
+                            const canvas = document.createElement('canvas');
+                            const ctx = canvas.getContext('2d');
+                            
+                            const maxWidth = 180;
+                            const maxHeight = 250;
+                            const ratio = Math.min(maxWidth / img.width, maxHeight / img.height);
+                            
+                            canvas.width = img.width * ratio;
+                            canvas.height = img.height * ratio;
+                            
+                            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                            
+                            doc.addImage(canvas.toDataURL(), 'JPEG', 15, 20, canvas.width, canvas.height);
+                            resolve();
+                        };
+                    });
+                    
+                    updateProgress(((i + 1) / imageFiles.length) * 100);
+                }
+                
+                doc.save('images-to-pdf.pdf');
+                hideProgress();
+            } catch (error) {
+                hideProgress();
+                alert('Error converting images to PDF: ' + error.message);
+            }
+        }
+
+        // Utility Functions
+        function fileToDataURL(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = e => resolve(e.target.result);
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+        }
+
+        function downloadTextFile(content, filename) {
+            const blob = new Blob([content], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function showProgress(message) {
+            document.getElementById('progress-container').classList.remove('hidden');
+            document.getElementById('progress-text').textContent = message;
+            updateProgress(0);
+        }
+
+        function updateProgress(percent) {
+            document.getElementById('progress-fill').style.width = percent + '%';
+        }
+
+        function hideProgress() {
+            document.getElementById('progress-container').classList.add('hidden');
+        }
+
+        // Drag and drop functionality
+        function setupDragAndDrop() {
+            const uploadZones = document.querySelectorAll('.upload-zone');
+            
+            uploadZones.forEach(zone => {
+                zone.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    zone.classList.add('dragover');
+                });
+                
+                zone.addEventListener('dragleave', () => {
+                    zone.classList.remove('dragover');
+                });
+                
+                zone.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    zone.classList.remove('dragover');
+                    
+                    const files = Array.from(e.dataTransfer.files);
+                    if (zone.parentElement.id === 'viewer-section') {
+                        if (files[0] && files[0].type === 'application/pdf') {
+                            document.getElementById('pdf-input').files = e.dataTransfer.files;
+                            loadPDF({target: {files: files}});
+                        }
+                    } else {
+                        convertFiles = files;
+                        displayFileList();
+                    }
+                });
+            });
+        }
+
+        // Initialize the app
+        document.addEventListener('DOMContentLoaded', () => {
+            setupDragAndDrop();
+        });
+    </script>
+</body>
+</html>
